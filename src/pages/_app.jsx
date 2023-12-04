@@ -9,7 +9,7 @@ import React from "react";
 
 
 export default function App({ Component, pageProps }) {
-  
+
   const router = useRouter();
   const theme = useThemeStore((state) => state.theme);
   const [themeMode, setThemeMode] = React.useState(theme);
@@ -31,14 +31,14 @@ export default function App({ Component, pageProps }) {
 
 
   return (
-    <ThirdwebProvider activeChain={Sepolia}>
+    <ThirdwebProvider activeChain={Sepolia} clientId="ad65a094248b8e9354ea0da0fb3e73dd" >
       <MantineProvider
         // withGlobalStyles
         withNormalizeCSS
         theme={{
-          colorScheme: theme,
+          colorScheme: "dark",
           defaultRadius: "sm",
-          primaryColor: "orange",
+          primaryColor: "blue",
           dir: "ltr",
           loader: "dots",
         }}

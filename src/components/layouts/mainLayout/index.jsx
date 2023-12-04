@@ -8,32 +8,30 @@ import {
 } from "@mantine/core";
 import { useThirdwebWallet } from "@thirdweb-dev/react";
 import { useRouter } from "next/router";
-import React from "react";
 
 export default function MainLayout({ children }) {
-  
+
   const router = useRouter();
   const setUser = useGlobalStore((state) => state.setUser);
   const user = useGlobalStore((state) => state.user);
-  const sdk = useThirdwebWallet();
 
 
-  const getAddress = async () => {
-    const addresses = await sdk?.signer?.getAddress();
-    if (addresses) {
-      setUser(addresses);
-    } else {
-      if (!sdk?.signer) {
-        setUser(null);
-      }
-      setUser(null);
-    }
-    return true;
-  };
+  // const getAddress = async () => {
+  //   const addresses = await sdk?.signer?.getAddress();
+  //   if (addresses) {
+  //     setUser(addresses);
+  //   } else {
+  //     if (!sdk?.signer) {
+  //       setUser(null);
+  //     }
+  //     setUser(null);
+  //   }
+  //   return true;
+  // };
 
-  React.useEffect(() => {
-    getAddress()
-  }, [sdk.connectionStatus]);
+  // React.useEffect(() => {
+  //   getAddress()
+  // }, [sdk.connectionStatus]);
 
   return (
     <AppShell

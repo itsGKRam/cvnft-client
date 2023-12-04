@@ -3,7 +3,7 @@ import SearchVideos from "@/components/search";
 
 
 export default function SearchScreen() {
-  
+
   return <SearchVideos />;
 }
 

@@ -1,4 +1,5 @@
-import storage from "@/config/firebase";
+import storage, { database } from "@/config/firebase";
+import useGlobalStore from "@/config/store/useGlobalStore";
 import {
   Button,
   FileInput,
@@ -11,27 +12,28 @@ import {
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useContract, useContractWrite } from "@thirdweb-dev/react";
-import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
+import { ref, set } from "firebase/database";
+import { getDownloadURL, ref as sref, uploadBytesResumable } from "firebase/storage";
 import { useRouter } from "next/router";
 import React from "react";
 
+
+
 export default function UploadVideo() {
-  
+
   const theme = useMantineTheme();
   const router = useRouter();
   const [sampleVideoProgress, setSampleVideoProgress] = React.useState(0);
   const [mainVideoProgress, setMainVideoProgress] = React.useState(0);
   const [tempSampleVideo, setTempSampleVideo] = React.useState(null);
   const [tempMailVideo, setTempMainVideo] = React.useState(null);
+  const user = useGlobalStore((state) => state.user);
+  const setLoading = useGlobalStore((state) => state.setLoading);
 
-  const { contract } = useContract(
-    "0x0C12Bd44b877eb5128b4e9851470F368A6e59c0e"
-  );
+  const { contract } = useContract("0x985Cb3ba019f675b8F8CAe08E9DA44411f2e17E4");
+  const { mutateAsync, isLoading, error } = useContractWrite(contract, "mintVideo")
 
-  const { mutateAsync: mintVideoNFT, isLoading } = useContractWrite(
-    contract,
-    "mintVideoNFT"
-  );
+
 
   const form = useForm({
     initialValues: {
@@ -40,13 +42,15 @@ export default function UploadVideo() {
       sampleVideoURL: null,
       mainVideoURL: null,
       price: null,
+      chef: "",
+      cuisineType: "",
     },
   });
 
   const uploadSampleVideo = () => {
     if (!tempSampleVideo) return;
 
-    const storageRef = ref(storage, `files/${tempSampleVideo?.name}`);
+    const storageRef = sref(storage, `files/${tempSampleVideo?.name}`);
     const uploadTask = uploadBytesResumable(storageRef, tempSampleVideo);
 
     uploadTask.on(
@@ -71,7 +75,7 @@ export default function UploadVideo() {
   const uploadMainVideo = () => {
     if (!tempMailVideo) return;
 
-    const storageRef = ref(storage, `files/${tempMailVideo?.name}`);
+    const storageRef = sref(storage, `files/${tempMailVideo?.name}`);
     const uploadTask = uploadBytesResumable(storageRef, tempMailVideo);
 
     uploadTask.on(
@@ -93,8 +97,20 @@ export default function UploadVideo() {
     );
   };
 
+  // async function call(_videoId, _price, _royalities) {
+  //   console.log("Calling Contract");
+  //   try {
+  //     console.log("Calling Contract 1");
+  //     mintVideo({ args: [_videoId, _price, _royalities] }).then(() => {
+  //       console.log("Calling Contract 2");
+  //     });
+  //   } catch (err) {
+  //     console.error("contract call failure", err);
+  //   }
+  // }
+
   const createVideoFunction = async (val) => {
-    const { title, description, sampleVideoURL, mainVideoURL, price } = val;
+    const { title, description, sampleVideoURL, mainVideoURL, price, chef, cuisineType } = val;
 
     if (tempSampleVideo && !sampleVideoURL) {
       return alert("Upload Sample Video");
@@ -108,27 +124,110 @@ export default function UploadVideo() {
       return alert("All Fields are required");
     }
 
+
+    const videoData = {
+      id: new Date().getTime().toString(),
+      title,
+      description,
+      sampleVideoURL,
+      mainVideoURL,
+      price: parseInt(price),
+      chef,
+      cuisineType,
+      mintingTime: parseInt((new Date()).getTime() / 1000),
+      isForSale: false,
+      owner: user.address,
+      duration: 0,
+      views: 0,
+    }
+
+
+    console.log(videoData);
+    console.log([parseInt(videoData?.id), parseInt(videoData?.price), 2])
+
+
+
+
+
+
+
     try {
-      console.info("Started");
-      const data = await mintVideoNFT({
-        args: [title, description, sampleVideoURL, mainVideoURL, price],
-      });
-      console.info("contract call success", data);
+      setLoading(true);
+      set(ref(database, `videos/${videoData.id}`), videoData).then(() => {
+        set(ref(database, `users/${user.address}/videos/${videoData.id}`), videoData.title).then(() => {
+          const notificationData = {
+            id: new Date().getTime().toString(),
+            title: "Video Uploaded",
+            description: "Video Uploaded Successfully",
+            type: "unread"
+          }
+          set(ref(database, `notifications/${user?.address}/${notificationData.id}`), notificationData).then(async () => {
+            setLoading(false);
+            const data = await mutateAsync({ args: [parseInt(videoData?.id), parseInt(videoData?.price), 2] });
+            console.info("contract call success", data);
+            // router.replace("/search");
+          }).catch((err) => {
+            console.log(err.message);
+          })
+        }).catch((err) => {
+          console.log(err.message);
+        })
+      }).catch((err) => {
+        console.log(err.message);
+      })
+    } catch (error) {
+
+    }
+
+
+    try {
+
+      //  string id; // Unique identifier for the video
+      //       string title; // Title of the cooking video
+      //       string description; // Description or summary of the video content
+      //       string sampleVideoURL; // URL to a sample or preview of the video
+      //       string mainVideoURL; // URL to the full cooking video
+      //       uint256 price; // Price of the video if it's for sale
+      //       address owner; // Address of the current owner of the NFT
+      //       uint256 mintingTime; // Timestamp when the video was minted as an NFT
+      //       string chef; // Name of the chef or creator
+      //       string cuisineType; // Type of cuisine (e.g., Italian, Mexican)
+      //       uint256 duration; // Duration of the video in seconds
+      //       uint256 views; // Number of views
+      //       bool isForSale; // Flag to indicate if the video is for sale
+      // // Add more fields as necessary
+
+
+
+
+      // console.info("Started");
+      // const data = await mintVideoNFT({
+      //   args: [title, description, sampleVideoURL, mainVideoURL, price],
+      // });
+      // console.info("contract call success", data);
       // alert("VideoNFT Created");
-      setSampleVideoProgress(0);
-      setMainVideoProgress(0);
-      setTempSampleVideo(null);
-      setTempMainVideo(null);
-      form.reset();
-      router.push("/search");
+      // setSampleVideoProgress(0);
+      // setMainVideoProgress(0);
+      // setTempSampleVideo(null);
+      // setTempMainVideo(null);
+      // form.reset();
+      // router.push("/search");
     } catch (err) {
       console.error("contract call failure", err);
     }
   };
 
-  return isLoading ? <div className=" relative h-full flex items-center justify-center">
-    <Skeleton className=" h-full" />
-    <div className=" absolute flex flex-col items-center gap-3 justify-center">
+
+  if (!contract) {
+    console.error("Contract is not loaded yet");
+    return <h1>Contract Error</h1>
+  } else {
+    console.log("Contract Loaded")
+  }
+
+  return isLoading ? <div className="relative flex items-center justify-center h-full ">
+    <Skeleton className="h-full " />
+    <div className="absolute flex flex-col items-center justify-center gap-3 ">
       <Title>
         Creating Contract
       </Title>
@@ -140,6 +239,7 @@ export default function UploadVideo() {
         onSubmit={form.onSubmit(createVideoFunction)}
         className="flex flex-col gap-3"
       >
+
         <TextInput
           required
           className="w-full"
@@ -162,7 +262,22 @@ export default function UploadVideo() {
           label="Cost"
           {...form.getInputProps("price")}
         />
+        <TextInput
+          required
+          className="w-full"
+          placeholder="Chef"
+          label="Chef"
+          {...form.getInputProps("chef")}
+        />
+        <TextInput
+          required
+          className="w-full"
+          placeholder="Cuisine Type"
+          label="Cuisine Type"
+          {...form.getInputProps("cuisineType")}
+        />
         <FileInput
+          required
           label="Sample Video"
           onChange={setTempSampleVideo}
           value={tempSampleVideo}
@@ -189,6 +304,7 @@ export default function UploadVideo() {
           }
         />
         <FileInput
+          required
           label="Main Video"
           onChange={setTempMainVideo}
           value={tempMailVideo}

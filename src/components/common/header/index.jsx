@@ -3,14 +3,14 @@ import { ConnectWallet } from "@thirdweb-dev/react";
 
 
 export default function MainHeader() {
-  
+
   return (
     <div className=" flex flex-row justify-between w-full items-center">
       <div>
-        <Title>KTNFT</Title>
+        <Title>Cooking Video NFT</Title>
       </div>
       <div>
-        <ConnectWallet/>
+        <ConnectWallet />
       </div>
     </div>
   )

@@ -5,9 +5,9 @@ import {
 } from "@thirdweb-dev/react";
 
 export default function CancelOfferButton(p) {
-    
+
     const { contract } = useContract(
-        "0x0C12Bd44b877eb5128b4e9851470F368A6e59c0e"
+        "0x985Cb3ba019f675b8F8CAe08E9DA44411f2e17E4"
     );
 
     const { mutateAsync: cancelOffer, isLoading: cancelOfferLoading } = useContractWrite(contract, "cancelOffer")
@@ -31,7 +31,7 @@ export default function CancelOfferButton(p) {
             console.log("do not cancel offer")
         }
 
-        
+
     }
 
     return (

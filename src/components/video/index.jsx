@@ -1,6 +1,8 @@
+import { database } from "@/config/firebase";
 import useGlobalStore from "@/config/store/useGlobalStore";
 import {
   Accordion,
+  Button,
   Card,
   Divider,
   Loader,
@@ -14,46 +16,101 @@ import { DateTimePicker } from "@mantine/dates";
 import { useDisclosure } from "@mantine/hooks";
 import {
   useContract,
-  useContractRead
+  useContractRead,
+  useContractWrite,
+  useSDK
 } from "@thirdweb-dev/react";
+import { get, ref, set, update } from "firebase/database";
 import { useRouter } from "next/router";
 import React from "react";
 import { Player } from "video-react";
 import AcceptOfferButton from "../common/acceptOfferButton";
-import BuyButton from "../common/buyButton";
-import CancelOfferButton from "../common/cancelOfferButton";
-import ChangePriceButton from "../common/changePriceButton";
-import DeleteVideoButton from "../common/deleteVideoButton";
 import MakeOfferButton from "../common/makeOfferButton";
+
 import OpenForSaleButton from "../common/openFOrSaleButton";
 import WatchVideoButton from "../common/watchVideoButton";
 
+
+
 export default function Video() {
-  
-  const { contract } = useContract(
-    "0x0C12Bd44b877eb5128b4e9851470F368A6e59c0e"
-  );
+
+  const { contract } = useContract("0x985Cb3ba019f675b8F8CAe08E9DA44411f2e17E4");
+  const { mutateAsync: setVideoForNotSale, isLoading } = useContractWrite(contract, "setVideoForNotSale")
+
   const router = useRouter();
   const { id } = router.query;
+  const sdk = useSDK();
   const [mainOpened, mainHandler] = useDisclosure(false);
   const [isOwner, setIsOwner] = React.useState(false);
   const user = useGlobalStore((state) => state.user);
   const [openForSale, setOpenForSale] = React.useState(false);
+  const [videoDetails, setVideoDetails] = React.useState();
+  const [offerMade, setOfferMade] = React.useState(false);
 
-  const { data: videoDetails, isLoading: videoDetailsLoading } =
-    useContractRead(contract, "getVideoDetails", [id]);
+  // const { data: videoDetails, isLoading: videoDetailsLoading } =
+  // useContractRead(contract, "getVideoDetails", [id]);
   const { data: VideoPrice, isLoading: VideoPriceLoading } = useContractRead(
     contract,
     "videoPrices",
     [id]
   );
+
+
   const { data: videoOwner, isLoading: videoOwnerLoading } = useContractRead(
     contract,
     "videoOwners",
     [id]
   );
+
   const { data: videoOpenFlatSale, isLoading: videoOpenFlatSaleLoading } = useContractRead(contract, "videoOpenForFlatSale", [id])
   const { data: getVideoTransactionDetails, isLoading: getVideoTransactionDetailsLoading } = useContractRead(contract, "getVideoTransactionDetails", [id])
+
+  const [videoOffers, setVideoOffers] = React.useState();
+
+
+
+  React.useEffect(() => {
+    if (!videoDetails) {
+      if (id) {
+
+        get(ref(database, `videos/${id}`)).then((snapshot) => {
+          if (snapshot.exists()) {
+            setVideoDetails(snapshot.val())
+          } else {
+            router.push('/search')
+          }
+
+        }).catch((err) => {
+          console.log(err.message);
+        })
+      }
+    }
+  }, [videoDetails, id]);
+
+  React.useEffect(() => {
+    if (id) {
+
+      get(ref(database, `offers/${id}`)).then((snapshot) => {
+        if (snapshot.exists()) {
+          setVideoOffers(Object.values(snapshot.val()))
+        }
+      }).catch((err) => {
+        console.log(err.message);
+      })
+    }
+  }, [id]);
+
+
+  React.useEffect(() => {
+    if (videoOffers) {
+      videoOffers.map((_) => {
+        if (_?.offerer?.toLowerCase() === user?.address?.toLowerCase()) {
+          setOfferMade(true)
+        }
+      })
+    }
+  }, [videoOffers]);
+
 
 
 
@@ -61,60 +118,66 @@ export default function Video() {
 
 
   React.useEffect(() => {
-    if (videoOwner?.toString()?.toUpperCase() === user?.toUpperCase()) {
+    if (videoDetails?.owner?.toUpperCase() === user?.address?.toUpperCase()) {
       setIsOwner(true);
     } else {
       setIsOwner(false);
     }
-  }, [videoOwner, user]);
+  }, [videoDetails, user]);
+
+
 
 
 
   const details = {
     title: videoDetails ? videoDetails?.title : null,
     description: videoDetails ? videoDetails?.description : null,
-    price: VideoPrice ? parseInt(VideoPrice?._hex, 16) : null,
+    price: videoDetails ? videoDetails?.price : null,
     sampleVideoURL: videoDetails ? videoDetails?.sampleUrl : null,
     mainVideoURL: videoDetails ? videoDetails?.mainUrl : null,
-    owner: videoDetails ? videoDetails?.currentOwner : null,
-    openForBidding: videoDetails ? videoDetails?.openForFlatSale : false,
+    owner: videoDetails ? videoDetails?.owner : null,
+    openForBidding: videoDetails ? videoDetails?.isForSale : false,
     startTime: videoDetails ? parseInt(videoDetails?.startTime?._hex, 16) : null,
     endTime: videoDetails ? parseInt(videoDetails?.endTime?._hex, 16) : null,
   };
 
-  React.useEffect(() => {
-    if (videoDetails) {
-      if (details?.title === null) {
-        setTimeout(() => {
-          router.push('/search')
-        }, 5000)
-      }
-    }
-    return () => {
-      clearTimeout()
-    }
-
-  }, [details, videoDetails])
 
   console.log(videoDetails);
 
-  React.useEffect(() => {
-    if (videoDetails) {
-      if (new Date(details?.endTime) > new Date()) {
-        if (new Date(details?.startTime) < new Date()) {
-          setOpenForSale(true);
-          return;
-        }
-      }
-      setOpenForSale(false);
-    }
-  }, [videoOpenFlatSale, videoDetails]);
 
-  if (videoDetailsLoading) {
+  // React.useEffect(() => {
+  //   if (videoDetails) {
+  //     if (details?.title === null) {
+  //       setTimeout(() => {
+  //         router.push('/search')
+  //       }, 5000)
+  //     }
+  //   }
+  //   return () => {
+  //     clearTimeout()
+  //   }
+
+  // }, [details, videoDetails])
+
+  // console.log(videoDetails);
+
+  // React.useEffect(() => {
+  //   if (videoDetails) {
+  //     if (new Date(details?.endTime) > new Date()) {
+  //       if (new Date(details?.startTime) < new Date()) {
+  //         setOpenForSale(true);
+  //         return;
+  //       }
+  //     }
+  //     setOpenForSale(false);
+  //   }
+  // }, [videoOpenFlatSale, videoDetails]);
+
+  if (!videoDetails) {
     return (
-      <div className=" relative h-full flex items-center justify-center">
-        <Skeleton className=" h-full" />
-        <div className=" absolute flex flex-col items-center gap-3 justify-center">
+      <div className="relative flex items-center justify-center h-full ">
+        <Skeleton className="h-full " />
+        <div className="absolute flex flex-col items-center justify-center gap-3 ">
           <Title>
             Fetching Video Details
           </Title>
@@ -166,14 +229,14 @@ export default function Video() {
           }
 
           <div className="flex gap-3">
-            <div>
+            {/* <div>
               <Text>Blockchain</Text>
               <Text>ETH</Text>
             </div>
             <div>
               <Text>Token Standard</Text>
               <Text>ERC-721</Text>
-            </div>
+            </div> */}
             <div>
               <Text>Token ID</Text>
               <Text>{id}</Text>
@@ -184,23 +247,30 @@ export default function Video() {
                 details?.price
               }</Text>
             </div>
+            {details?.openForBidding && (
+              <div>
+                <Text>Bid Amount</Text>
+                <Text>{
+                  videoDetails?.bidAmount
+                }</Text>
+              </div>
+            )}
           </div>
-          <Text>owner: {details?.owner?.toUpperCase() === user?.toUpperCase() ? "Me" : details?.owner}</Text>
+          <Text>owner: {details?.owner?.toUpperCase() === user?.address?.toUpperCase() ? "Me" : details?.owner}</Text>
 
-          {getVideoTransactionDetails?.offerers?.length > 0 && (
+          {videoOffers?.length > 0 && (
             <Accordion variant="filled">
               <Accordion.Item value="pastOffers">
                 <Accordion.Control>Past Offers</Accordion.Control>
                 <Accordion.Panel>
                   <div className="flex flex-col gap-3">
 
-                    {getVideoTransactionDetails?.offerers?.map((_, i) => {
+                    {videoOffers?.map((_, i) => {
                       return (
-                        <Card className=" flex group flex-row items-center gap-3 justify-between">
-                          <div>{_} ---- {parseInt(getVideoTransactionDetails?.offerPrices[i]?._hex, 16)}</div>
+                        <Card className="flex flex-row items-center justify-between gap-3 group">
+                          <div>{_?.offerer} ---- {parseInt(_?.price)}</div>
                           {isOwner && (
-                            <AcceptOfferButton newOwner={_} key={"dwnewdckwd"} id={id} minPrice={details?.price} />
-
+                            <AcceptOfferButton data={_} offerID={_?.offerID} newOwner={_?.offerer} key={"dwnewdckwd"} id={id} minPrice={details?.price} />
                           )}
                         </Card>
                       )
@@ -232,26 +302,52 @@ export default function Video() {
           {isOwner && (
             <WatchVideoButton key={"dwddwcw"} id={id} url={details?.mainVideoURL} />
           )}
-          {isOwner && !openForSale && (
+          {isOwner && !details?.openForBidding && (
             <OpenForSaleButton key={"dwdwdcw"} id={id} minPrice={details?.price} />
           )}
-          {isOwner && (
+          {isOwner && details?.openForBidding && (
+            // <OpenForSaleButton key={"dwdwdcw"} id={id} minPrice={details?.price} />
+            <Button onClick={() => {
+              update(ref(database, `videos/${id}`), {
+                isForSale: false,
+                bidAmount: 0
+              }).then(() => {
+                const notificationData = {
+                  id: new Date().getTime().toString(),
+                  title: "Video Closed For Sale",
+                  description: `Your video ${id} is now closed for sale`,
+                  type: "unread"
+                }
+                set(ref(database, `notifications/${user?.address}/${notificationData.id}`), notificationData).then(() => {
+                  console.log('Notification created successfully for new owner')
+                })
+              }).then(async () => {
+                const data = await setVideoForNotSale({ args: [id] });
+                if (data) {
+                  router.reload()
+                }
+              }).catch((err) => {
+                console.log(err.message);
+              })
+            }}>Close For SALE</Button>
+          )}
+          {/* {isOwner && (
             <ChangePriceButton key={"dcwdwcdcw"} id={id} minPrice={details?.price} />
-          )}
-          {!isOwner && !openForSale && (
-            <MakeOfferButton key={"dwnckwd"} id={id} minPrice={details?.price} />
+          )} */}
+          {!isOwner && details?.openForBidding && (
+            <MakeOfferButton disabled={offerMade} key={"dwnckwd"} id={id} minPrice={details?.price} />
           )}
 
-          {!isOwner && openForSale && (
+          {/* {!isOwner && openForSale && (
             <BuyButton key={"dwnckwdc"} id={id} minPrice={details?.price} />
-            )}
+          )} */}
 
-          {!isOwner && getVideoTransactionDetails?.offerers?.map((_, i) => user.toLowerCase() === _.toLowerCase() && (
+          {/* {!isOwner && getVideoTransactionDetails?.offerers?.map((_, i) => user?.address?.toLowerCase() === _.toLowerCase() && (
             <CancelOfferButton key={"dwnckwdcwd"} id={id} />
-            ))}
-          {isOwner && (
+          ))} */}
+          {/* {isOwner && (
             <DeleteVideoButton key={"dwndwcckwdcwd"} id={id} />
-            )}
+          )} */}
         </div>
       </div>
       <Divider />
@@ -268,6 +364,6 @@ export default function Video() {
           src={details?.sampleVideoURL}
         />
       </Modal>
-    </div>
+    </div >
   );
 }

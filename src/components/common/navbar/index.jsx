@@ -4,7 +4,7 @@ import Link from "next/link";
 import React from "react";
 
 export default function MainNavBar() {
-  
+
   const [value, setValue] = React.useState("react");
   const user = useGlobalStore((state) => state.user);
 
@@ -12,6 +12,7 @@ export default function MainNavBar() {
     { label: "Search", value: "search", url: "/search" },
     { label: "Upload", value: "upload", url: "/user/upload" },
     { label: "My Account", value: "my-account", url: "/user/my-account" },
+    // { label: "Notification", value: "notification", url: "/user/notifications" },
     // { label: "Disconnect Wallet", value: "disconnect-wallet", url: "/logout" },
   ];
 
