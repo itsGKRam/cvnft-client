@@ -36,7 +36,7 @@ export default function App({ Component, pageProps }) {
         // withGlobalStyles
         withNormalizeCSS
         theme={{
-          colorScheme: "dark",
+          colorScheme: "light",
           defaultRadius: "sm",
           primaryColor: "blue",
           dir: "ltr",

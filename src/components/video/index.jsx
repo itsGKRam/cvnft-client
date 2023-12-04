@@ -190,7 +190,7 @@ export default function Video() {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-row gap-3">
+      <div className="flex flex-row-reverse gap-3">
         <div className="flex w-[70%] flex-col justify-end h-full gap-3">
           <Title>{details?.title}</Title>
           {

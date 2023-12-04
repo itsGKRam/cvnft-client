@@ -1,13 +1,13 @@
 import useGlobalStore from "@/config/store/useGlobalStore";
 import { Button, Title } from "@mantine/core";
-import { useThirdwebWallet } from "@thirdweb-dev/react";
+import { useSDK } from "@thirdweb-dev/react";
 import { useRouter } from "next/router";
 
 
 export default function LogoutScreen() {
-  
+
   const router = useRouter();
-  const sdk = useThirdwebWallet();
+  const sdk = useSDK();
   const setUser = useGlobalStore((state) => state.setUser);
   const user = useGlobalStore((state) => state.user);
   const setLoading = useGlobalStore((state) => state.setLoading);

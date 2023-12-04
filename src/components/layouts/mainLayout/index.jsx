@@ -6,7 +6,6 @@ import {
   Header,
   Navbar
 } from "@mantine/core";
-import { useThirdwebWallet } from "@thirdweb-dev/react";
 import { useRouter } from "next/router";
 
 export default function MainLayout({ children }) {
@@ -43,7 +42,7 @@ export default function MainLayout({ children }) {
         </Navbar>
       }
       header={
-        <Header height={80} p="xs">
+        <Header className="bg-blue-600 " height={80} p="xs">
           <MainHeader />
         </Header>
       }
